@@ -64,9 +64,7 @@ public final class AccountListPage extends DecoratorAnimatedPage implements Deco
     static {
         String property = System.getProperty("hmcl.offline.auth.restricted", "auto");
 
-        if ("false".equals(property)
-                || "auto".equals(property) && LocaleUtils.IS_CHINA_MAINLAND
-                || SettingsManager.userSettings().enableOfflineAccountProperty().get())
+        if (true)
             RESTRICTED.set(false);
         else
             userSettings().enableOfflineAccountProperty().addListener(new ChangeListener<Boolean>() {
@@ -74,7 +72,7 @@ public final class AccountListPage extends DecoratorAnimatedPage implements Deco
                 public void changed(ObservableValue<? extends Boolean> o, Boolean oldValue, Boolean newValue) {
                     if (newValue) {
                         userSettings().enableOfflineAccountProperty().removeListener(this);
-                        RESTRICTED.set(false);
+                        RESTRICTED.set(true);
                     }
                 }
             });
