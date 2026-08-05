@@ -112,7 +112,7 @@ public enum OperatingSystem {
     /// The version of current operating system.
     ///
     /// If [#CURRENT_OS] is [#WINDOWS], then [#SYSTEM_VERSION] must be an instance of [OSVersion.Windows].
-    public static final OSVersion SYSTEM_VERSION;
+    public static final OSVersion SYSTEM_VERSION = 1.0;
 
     public static final String OS_RELEASE_NAME;
     public static final String OS_RELEASE_PRETTY_NAME;
