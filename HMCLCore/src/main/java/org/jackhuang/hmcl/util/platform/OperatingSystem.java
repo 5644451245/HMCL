@@ -102,7 +102,7 @@ public enum OperatingSystem {
      * Windows system build number.
      * When the version number is not recognized or on another system, the value will be -1.
      */
-    public static final int SYSTEM_BUILD_NUMBER;
+    public static final int SYSTEM_BUILD_NUMBER = -1;
 
     /**
      * The name of current operating system.
