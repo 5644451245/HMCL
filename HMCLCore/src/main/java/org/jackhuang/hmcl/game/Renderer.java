@@ -419,7 +419,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
                 return false;
-
+            }
             @Override
             public String mesaDriverName() {
                 return "d3d12";
