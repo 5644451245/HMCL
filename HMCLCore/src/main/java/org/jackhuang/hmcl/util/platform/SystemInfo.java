@@ -23,8 +23,6 @@ import org.jackhuang.hmcl.util.platform.hardware.GraphicsCard;
 import org.jackhuang.hmcl.util.platform.hardware.HardwareDetector;
 import org.jackhuang.hmcl.util.platform.hardware.PhysicalMemoryStatus;
 import org.jackhuang.hmcl.util.platform.linux.LinuxHardwareDetector;
-import org.jackhuang.hmcl.util.platform.macos.MacOSHardwareDetector;
-import org.jackhuang.hmcl.util.platform.windows.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -37,12 +35,8 @@ public final class SystemInfo {
         public static final HardwareDetector DETECTOR;
 
         static {
-            if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS)
-                DETECTOR = new WindowsHardwareDetector();
-            else if (OperatingSystem.CURRENT_OS == OperatingSystem.LINUX)
+            if (OperatingSystem.CURRENT_OS == OperatingSystem.LINUX)
                 DETECTOR = new LinuxHardwareDetector();
-            else if (OperatingSystem.CURRENT_OS == OperatingSystem.MACOS)
-                DETECTOR = new MacOSHardwareDetector();
             else
                 DETECTOR = new HardwareDetector();
         }
