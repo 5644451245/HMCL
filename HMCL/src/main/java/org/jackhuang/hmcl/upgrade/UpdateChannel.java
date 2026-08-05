@@ -31,12 +31,6 @@ public enum UpdateChannel {
     }
 
     public static UpdateChannel getChannel() {
-        if (Metadata.isDev()) {
-            return DEVELOPMENT;
-        } else if (Metadata.isNightly()) {
-            return NIGHTLY;
-        } else {
-            return STABLE;
-        }
+        return STABLE;
     }
 }
