@@ -150,7 +150,7 @@ public class MicrosoftAccountLoginPane extends JFXDialogLayout implements Dialog
             return;
         }
 
-        if (!IntegrityChecker.isOfficial()) {
+        if (false) {
             var unofficialHintPane = new HintPane(MessageDialogPane.MessageType.WARNING);
             unofficialHintPane.setSegment(i18n("unofficial.hint"));
             rootContainer.getChildren().add(unofficialHintPane);
