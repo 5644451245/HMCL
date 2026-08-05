@@ -192,7 +192,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         INTEL_VULKAN("ig") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == false && Vulkan.hasCard(cards, HardwareVendor.INTEL);
+                return false && Vulkan.hasCard(cards, HardwareVendor.INTEL);
             }
         },
 
