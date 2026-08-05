@@ -41,16 +41,7 @@ public final class UpdateChecker {
     private static final BooleanBinding outdated = Bindings.createBooleanBinding(
             () -> {
                 RemoteVersion latest = latestVersion.get();
-                if (latest == null || isDevelopmentVersion(Metadata.VERSION)) {
-                    return false;
-                } else if (latest.force()
-                        || Metadata.isNightly()
-                        || latest.channel() == UpdateChannel.NIGHTLY
-                        || latest.channel() != UpdateChannel.getChannel()) {
-                    return !latest.version().equals(Metadata.VERSION);
-                } else {
-                    return VersionNumber.compare(Metadata.VERSION, latest.version()) < 0;
-                }
+                return false;
             },
             latestVersion);
     private static final ReadOnlyBooleanWrapper checkingUpdate = new ReadOnlyBooleanWrapper(false);
