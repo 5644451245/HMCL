@@ -18,8 +18,6 @@
 package org.jackhuang.hmcl.util.platform;
 
 import org.jackhuang.hmcl.util.KeyValuePairUtils;
-import org.jackhuang.hmcl.util.platform.windows.Kernel32;
-import org.jackhuang.hmcl.util.platform.windows.WinReg;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -143,106 +141,8 @@ public enum OperatingSystem {
         } catch (UnsupportedCharsetException e) {
             e.printStackTrace(System.err);
         }
+        
         NATIVE_CHARSET = nativeCharset;
-
-        if (CURRENT_OS == WINDOWS) {
-            int codePage = -1;
-            OSVersion.Windows windowsVersion = null;
-
-            Kernel32 kernel32 = Kernel32.INSTANCE;
-            WinReg reg = WinReg.INSTANCE;
-
-            // Get Windows version number
-            if (reg != null) {
-                var baseVersion = OSVersion.Windows.parse(System.getProperty("os.version"));
-                int majorVersion = baseVersion.major();
-                int minorVersion = baseVersion.minor();
-                int buildNumber = baseVersion.build();
-                int revision = baseVersion.revision();
-
-                Object currentBuild = reg.queryValue(WinReg.HKEY.HKEY_LOCAL_MACHINE,
-                        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuild");
-                if (currentBuild instanceof String currentBuildStr) {
-                    try {
-                        buildNumber = Integer.parseInt(currentBuildStr);
-                    } catch (NumberFormatException e) {
-                        System.err.println("Invalid Windows build number: " + currentBuildStr);
-                    }
-                }
-
-                if (majorVersion >= 10) {
-                    Object ubr = reg.queryValue(WinReg.HKEY.HKEY_LOCAL_MACHINE,
-                            "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "UBR");
-
-                    if (ubr instanceof Integer ubrValue)
-                        revision = ubrValue;
-                }
-
-                windowsVersion = new OSVersion.Windows(majorVersion, minorVersion, buildNumber, revision);
-            }
-
-            if (windowsVersion == null) {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[]{"cmd", "ver"});
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), NATIVE_CHARSET))) {
-                        Matcher matcher = Pattern.compile("(?<version>\\d+\\.\\d+\\.\\d+\\.\\d+?)]$")
-                                .matcher(reader.readLine().trim());
-                        if (matcher.find())
-                            windowsVersion = OSVersion.Windows.parse(matcher.group("version"));
-                    }
-                    process.destroy();
-                } catch (Throwable ignored) {
-                }
-            }
-
-            if (windowsVersion == null)
-                windowsVersion = OSVersion.Windows.parse(System.getProperty("os.version"));
-
-            // Get Code Page
-
-            if (kernel32 != null)
-                codePage = kernel32.GetACP();
-            else {
-                try {
-                    Process process = Runtime.getRuntime().exec(new String[]{"chcp.com"});
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), NATIVE_CHARSET))) {
-                        Matcher matcher = Pattern.compile("(?<cp>[0-9]+)$")
-                                .matcher(reader.readLine().trim());
-
-                        if (matcher.find())
-                            codePage = Integer.parseInt(matcher.group("cp"));
-                    }
-                    process.destroy();
-                } catch (Throwable ignored) {
-                }
-            }
-
-            String osName = System.getProperty("os.name");
-
-            // Java 17 or earlier recognizes Windows 11 as Windows 10
-            if (osName.equals("Windows 10") && windowsVersion.isAtLeast(OSVersion.WINDOWS_11))
-                osName = "Windows 11";
-
-            if (windowsVersion.isAtLeast(OSVersion.WINDOWS_10) && reg != null) {
-                Object displayVersion = reg.queryValue(WinReg.HKEY.HKEY_LOCAL_MACHINE,
-                        "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "DisplayVersion");
-
-                if (displayVersion instanceof String displayVersionStr
-                        && displayVersionStr.matches("\\d{2}H\\d")) {
-                    osName = osName + " " + displayVersionStr;
-                }
-            }
-
-            SYSTEM_NAME = osName;
-            SYSTEM_VERSION = windowsVersion;
-            SYSTEM_BUILD_NUMBER = windowsVersion.build();
-            CODE_PAGE = codePage;
-        } else {
-            SYSTEM_NAME = System.getProperty("os.name");
-            SYSTEM_VERSION = OSVersion.of(CURRENT_OS, System.getProperty("os.version"));
-            SYSTEM_BUILD_NUMBER = -1;
-            CODE_PAGE = -1;
-        }
 
         Map<String, String> osRelease = Collections.emptyMap();
         if (CURRENT_OS == LINUX || CURRENT_OS == FREEBSD) {
@@ -266,11 +166,7 @@ public enum OperatingSystem {
 
         name = name.trim().toLowerCase(Locale.ROOT);
 
-        if (name.contains("mac") || name.contains("darwin") || name.contains("osx"))
-            return MACOS;
-        else if (name.contains("win"))
-            return WINDOWS;
-        else if (name.contains("solaris") || name.contains("linux") || name.contains("unix") || name.contains("sunos"))
+        if (name.contains("solaris") || name.contains("linux") || name.contains("unix") || name.contains("sunos"))
             return LINUX;
         else if (name.equals("freebsd"))
             return FREEBSD;
@@ -307,11 +203,6 @@ public enum OperatingSystem {
             case LINUX:
             case FREEBSD:
                 return Paths.get(home, "." + folder).toAbsolutePath();
-            case WINDOWS:
-                String appdata = System.getenv("APPDATA");
-                return Paths.get(appdata == null ? home : appdata, "." + folder).toAbsolutePath();
-            case MACOS:
-                return Paths.get(home, "Library", "Application Support", folder).toAbsolutePath();
             default:
                 return Paths.get(home, folder).toAbsolutePath();
         }
