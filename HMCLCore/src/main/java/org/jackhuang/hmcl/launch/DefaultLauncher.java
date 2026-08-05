@@ -27,7 +27,6 @@ import org.jackhuang.hmcl.util.StringUtils;
 import org.jackhuang.hmcl.util.io.FileUtils;
 import org.jackhuang.hmcl.util.io.Unzipper;
 import org.jackhuang.hmcl.util.platform.*;
-import org.jackhuang.hmcl.util.platform.macos.HomebrewUtils;
 import org.jackhuang.hmcl.util.versioning.GameVersionNumber;
 import org.jetbrains.annotations.Nullable;
 
@@ -71,16 +70,12 @@ public class DefaultLauncher extends Launcher {
 
         switch (options.getProcessPriority()) {
             case HIGH:
-                if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                    // res.add("cmd", "/C", "start", "unused title", "/B", "/high");
-                } else if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
+                if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
                     res.addAll("nice", "-n", "-5");
                 }
                 break;
             case ABOVE_NORMAL:
-                if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                    // res.add("cmd", "/C", "start", "unused title", "/B", "/abovenormal");
-                } else if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
+                if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
                     res.addAll("nice", "-n", "-1");
                 }
                 break;
@@ -88,16 +83,12 @@ public class DefaultLauncher extends Launcher {
                 // do nothing
                 break;
             case BELOW_NORMAL:
-                if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                    // res.add("cmd", "/C", "start", "unused title", "/B", "/belownormal");
-                } else if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
+                if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
                     res.addAll("nice", "-n", "1");
                 }
                 break;
             case LOW:
-                if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                    // res.add("cmd", "/C", "start", "unused title", "/B", "/low");
-                } else if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
+                if (OperatingSystem.CURRENT_OS.isLinuxOrBSD() || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
                     res.addAll("nice", "-n", "5");
                 }
                 break;
@@ -159,14 +150,6 @@ public class DefaultLauncher extends Launcher {
             appendJvmArgs(res);
 
             res.addDefault("-Dminecraft.client.jar=", FileUtils.getAbsolutePath(repository.getInstanceJar(manifest)));
-
-            if (OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
-                res.addDefault("-Xdock:name=", "Minecraft " + manifest.id());
-                repository.getAssetObject(manifest.id(), manifest.getAssetIndex().getId(), "icons/minecraft.icns")
-                        .ifPresent(minecraftIcns -> {
-                            res.addDefault("-Xdock:icon=", FileUtils.getAbsolutePath(minecraftIcns));
-                        });
-            }
 
             if (OperatingSystem.CURRENT_OS != OperatingSystem.WINDOWS)
                 res.addDefault("-Duser.home=", options.getGameDir().toAbsolutePath().getParent().toString());
@@ -266,21 +249,6 @@ public class DefaultLauncher extends Launcher {
             res.addDefault("-Dfml.ignorePatchDiscrepancies=", "true");
         }
 
-        if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS
-                && options.getRenderer() instanceof Renderer.Driver renderer
-                && renderer.mesaDriverName() != null) {
-            res.addDefault("-Dorg.glavo.mesa.loader.nativeDir=", FileUtils.getAbsolutePath(nativeFolder.resolve("mesa-loader")));
-        }
-
-        if (OperatingSystem.CURRENT_OS == OperatingSystem.MACOS
-                && options.getJava().getArchitecture() == Architecture.SYSTEM_ARCH
-                && options.getRenderer() instanceof Renderer.Vulkan vulkanDriver
-                && vulkanDriver.icdFile() != null) {
-            if (Files.isRegularFile(HomebrewUtils.LIB_VULKAN)) {
-                res.addDefault("-Dorg.lwjgl.vulkan.libname=", FileUtils.getAbsolutePath(HomebrewUtils.LIB_VULKAN));
-            }
-        }
-
         Set<String> classpath = repository.getClasspath(manifest);
 
         if (analyzer.has(LibraryAnalyzer.LibraryType.CLEANROOM)) {
@@ -305,7 +273,7 @@ public class DefaultLauncher extends Launcher {
         // Here is a workaround for this issue: https://github.com/HMCL-dev/HMCL/issues/1141.
         String nativeFolderPath = FileUtils.getAbsolutePath(nativeFolder);
         Path tempNativeFolder = null;
-        if ((OperatingSystem.CURRENT_OS == OperatingSystem.LINUX || OperatingSystem.CURRENT_OS == OperatingSystem.MACOS)
+        if ((OperatingSystem.CURRENT_OS == OperatingSystem.LINUX)
                 && !StringUtils.isASCII(nativeFolderPath)
                 && gameVersion.isPresent() && GameVersionNumber.compare(gameVersion.get(), "1.19") < 0) {
             tempNativeFolder = Paths.get("/", "tmp", "hmcl-natives-" + UUID.randomUUID());
@@ -627,25 +595,7 @@ public class DefaultLauncher extends Launcher {
         env.put("INST_JAVA", options.getJava().getBinary().toString());
 
         if (options.getRenderer() instanceof Renderer.Driver driver) {
-            if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                if (driver.mesaDriverName() != null) {
-                    if (driver instanceof Renderer.OpenGL && driver != Renderer.OpenGL.LLVMPIPE)
-                        env.put("GALLIUM_DRIVER", driver.mesaDriverName());
-                    else if (driver instanceof Renderer.Vulkan vulkanDriver) {
-                        String icdFile = FileUtils.getAbsolutePath(nativeFolder.resolve("mesa-loader/" + vulkanDriver.icdName() + "_icd.json"));
-
-                        env.put("VK_ICD_FILENAMES", icdFile);
-                        env.put("VK_DRIVER_FILES", icdFile);
-                    }
-                } else if (driver instanceof Renderer.Vulkan vulkanDriver
-                        && vulkanDriver.icdFile() != null
-                        && options.getJava().getArchitecture() == Architecture.SYSTEM_ARCH) {
-                    String icdFile = FileUtils.getAbsolutePath(vulkanDriver.icdFile());
-
-                    env.put("VK_ICD_FILENAMES", icdFile);
-                    env.put("VK_DRIVER_FILES", icdFile);
-                }
-            } else if (OperatingSystem.CURRENT_OS.isLinuxOrBSD()) {
+            if (OperatingSystem.CURRENT_OS.isLinuxOrBSD()) {
                 if (driver instanceof Renderer.OpenGL oglDriver) {
                     if (oglDriver == Renderer.OpenGL.LLVMPIPE) {
                         env.put("__GLX_VENDOR_LIBRARY_NAME", "mesa");
@@ -668,15 +618,6 @@ public class DefaultLauncher extends Launcher {
                         env.put("VK_ICD_FILENAMES", absolutePath);
                         env.put("VK_DRIVER_FILES", absolutePath);
                     }
-                }
-            } else if (OperatingSystem.CURRENT_OS == OperatingSystem.MACOS
-                    && options.getJava().getArchitecture() == Architecture.SYSTEM_ARCH) {
-                if (driver instanceof Renderer.Vulkan vulkanDriver
-                        && vulkanDriver != Renderer.Vulkan.MOLTENVK
-                        && vulkanDriver.icdFile() != null) {
-                    String absolutePath = FileUtils.getAbsolutePath(vulkanDriver.icdFile());
-                    env.put("VK_ICD_FILENAMES", absolutePath);
-                    env.put("VK_DRIVER_FILES", absolutePath);
                 }
             }
         }
@@ -713,7 +654,7 @@ public class DefaultLauncher extends Launcher {
 
     @Override
     public void makeLaunchScript(Path scriptFile) throws IOException {
-        boolean isWindows = OperatingSystem.WINDOWS == OperatingSystem.CURRENT_OS;
+        boolean isWindows = false;
 
         Path nativeFolder = getNativeFolder();
 
@@ -721,9 +662,7 @@ public class DefaultLauncher extends Launcher {
         boolean usePowerShell = "ps1".equals(scriptExtension);
 
         if (!usePowerShell) {
-            if (isWindows && !scriptExtension.equalsIgnoreCase("bat"))
-                throw new IllegalArgumentException("The extension of " + scriptFile + " is not 'bat' or 'ps1' in Windows");
-            else if (!isWindows && !(scriptExtension.equalsIgnoreCase("sh") || scriptExtension.equalsIgnoreCase("command") || scriptExtension.equalsIgnoreCase("bash")))
+            if (!isWindows && !(scriptExtension.equalsIgnoreCase("sh") || scriptExtension.equalsIgnoreCase("command") || scriptExtension.equalsIgnoreCase("bash")))
                 throw new IllegalArgumentException("The extension of " + scriptFile + " is not 'sh', 'bash', 'ps1' or 'command' in macOS/Linux");
         }
 
