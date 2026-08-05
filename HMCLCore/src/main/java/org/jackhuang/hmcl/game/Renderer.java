@@ -27,7 +27,6 @@ import org.jackhuang.hmcl.util.io.FileUtils;
 import org.jackhuang.hmcl.util.platform.*;
 import org.jackhuang.hmcl.util.platform.hardware.GraphicsCard;
 import org.jackhuang.hmcl.util.platform.hardware.HardwareVendor;
-import org.jackhuang.hmcl.util.platform.macos.HomebrewUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
@@ -130,7 +129,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         DOZEN("dzn") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == OperatingSystem.WINDOWS;
+                return false;
             }
 
             @Override
@@ -193,7 +192,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         INTEL_VULKAN("ig") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == OperatingSystem.WINDOWS && Vulkan.hasCard(cards, HardwareVendor.INTEL);
+                return platform.os() == false && Vulkan.hasCard(cards, HardwareVendor.INTEL);
             }
         },
 
@@ -205,7 +204,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         INTEL_ANV("intel") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() != OperatingSystem.WINDOWS && Vulkan.hasCard(cards, HardwareVendor.INTEL);
+                return true && Vulkan.hasCard(cards, HardwareVendor.INTEL);
             }
         },
 
@@ -217,7 +216,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         INTEL_HASVK("intel_hasvk") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() != OperatingSystem.WINDOWS
+                return true
                         && cards != null
                         && cards.stream().anyMatch(card -> card.getVendor() == HardwareVendor.INTEL && card.getName().startsWith("Intel HD Graphics "));
             }
@@ -229,7 +228,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         QUALCOMM("qc") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.equals(Platform.WINDOWS_ARM64);
+                return false;
             }
         },
 
@@ -241,7 +240,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         TURNIP("freedreno") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() != OperatingSystem.WINDOWS && platform.arch().isArm();
+                return true && platform.arch().isArm();
             }
         },
 
@@ -253,7 +252,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         MOLTENVK("MoltenVK") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == OperatingSystem.MACOS;
+                return false;
             }
         },
 
@@ -265,7 +264,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         KOSMICKRISP("kosmickrisp_mesa") {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == OperatingSystem.MACOS && platform.arch() == Architecture.ARM64;
+                return false && platform.arch() == Architecture.ARM64;
             }
         },
 
@@ -328,102 +327,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
 
                 supported.add(DEFAULT);
 
-                if (OperatingSystem.CURRENT_OS == OperatingSystem.WINDOWS) {
-                    supported.addAll(List.of(LAVAPIPE, DOZEN));
-
-                    List<GraphicsCard> graphicsCards = SystemInfo.getGraphicsCards();
-                    if (graphicsCards != null) {
-                        EnumSet<Vulkan> foundSupported = EnumSet.noneOf(Vulkan.class);
-                        for (GraphicsCard card : graphicsCards) {
-                            if (!card.getVulkanDriverFiles().isEmpty()) {
-                                for (Path icdFile : card.getVulkanDriverFiles()) {
-                                    String fileName = FileUtils.getName(icdFile);
-                                    if (!fileName.endsWith(".json"))
-                                        continue;
-
-                                    Vulkan driver;
-
-                                    Matcher matcher = icdFileNamePattern.matcher(fileName);
-                                    if (matcher.matches()) {
-                                        String icdName = matcher.group("name");
-                                        driver = icdNameToDriver.get(icdName);
-                                    } else {
-                                        switch (fileName.substring(0, fileName.length() - ".json".length())) {
-                                            case "igvk64" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_64)
-                                                    driver = INTEL_VULKAN;
-                                                else
-                                                    continue;
-                                            }
-                                            case "igvk32" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_32)
-                                                    driver = INTEL_VULKAN;
-                                                else
-                                                    continue;
-                                            }
-                                            case "nv-vk64" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_64)
-                                                    driver = NVIDIA_VULKAN;
-                                                else
-                                                    continue;
-                                            }
-                                            case "nv-vk32" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_32)
-                                                    driver = NVIDIA_VULKAN;
-                                                else
-                                                    continue;
-                                            }
-                                            case "amd-vulkan64" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_64)
-                                                    driver = AMDVLK;
-                                                else
-                                                    continue;
-                                            }
-                                            case "amd-vulkan32" -> {
-                                                if (Architecture.SYSTEM_ARCH.getBits() == Bits.BIT_32)
-                                                    driver = AMDVLK;
-                                                else
-                                                    continue;
-                                            }
-                                            case "qcvk_icd_arm64x" -> {
-                                                if (Architecture.SYSTEM_ARCH == Architecture.ARM64)
-                                                    driver = QUALCOMM;
-                                                else
-                                                    continue;
-                                            }
-                                            default -> {
-                                                continue;
-                                            }
-                                        }
-                                    }
-
-                                    driverToIcdFile.putIfAbsent(driver, icdFile);
-                                    foundSupported.add(driver);
-                                }
-                            }
-                        }
-                        supported.addAll(foundSupported);
-                    }
-
-                } else if (OperatingSystem.CURRENT_OS == OperatingSystem.MACOS) {
-                    // LWJGL integrates MoltenVK, so it is always available
-                    supported.add(MOLTENVK);
-
-                    // We need libvulkan.1.dylib to load custom Vulkan drivers
-                    if (Files.isRegularFile(HomebrewUtils.LIB_VULKAN)) {
-                        Path kosmickrispIcd = HomebrewUtils.HOMEBREW_PREFIX.resolve("share/vulkan/icd.d/kosmickrisp_mesa_icd." + archName + ".json");
-                        if (Files.isRegularFile(kosmickrispIcd)) {
-                            driverToIcdFile.put(KOSMICKRISP, kosmickrispIcd);
-                            supported.add(KOSMICKRISP);
-                        }
-
-                        Path lvpIcd = HomebrewUtils.HOMEBREW_PREFIX.resolve("share/vulkan/icd.d/lvp_icd." + archName + ".json");
-                        if (Files.isRegularFile(lvpIcd)) {
-                            driverToIcdFile.put(LAVAPIPE, lvpIcd);
-                            supported.add(LAVAPIPE);
-                        }
-                    }
-                } else {
+                if (true) {
                     List<Path> icdDirs = switch (OperatingSystem.CURRENT_OS) {
                         case LINUX -> List.of(
                                 Path.of("/usr/share/vulkan/icd.d"),
@@ -514,8 +418,7 @@ public sealed interface Renderer permits Renderer.Default, Renderer.Driver, Rend
         D3D12 {
             @Override
             public boolean isSupported(Platform platform, @Nullable List<GraphicsCard> cards) {
-                return platform.os() == OperatingSystem.WINDOWS;
-            }
+                return false;
 
             @Override
             public String mesaDriverName() {
