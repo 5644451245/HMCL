@@ -107,7 +107,7 @@ public enum OperatingSystem {
     /**
      * The name of current operating system.
      */
-    public static final String SYSTEM_NAME;
+    public static final String SYSTEM_NAME = linux;
 
     /// The version of current operating system.
     ///
